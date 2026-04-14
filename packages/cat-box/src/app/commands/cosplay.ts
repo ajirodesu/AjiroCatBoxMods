@@ -3,7 +3,7 @@
  *
  * Fetches a random cosplay .mp4 from the ajirodesu/cosplay GitHub archive.
  * Implements a "Next Video" button that replaces the current video in-place
- * by re-invoking onCommand with the existing message ID.
+ * by re-invoking the shared sendCosplayVideo helper with the stored session.
  */
 
 import axios from 'axios';
@@ -47,7 +47,7 @@ async function fetchCosplayVideo(): Promise<string | null> {
 export const config = {
   name: 'cosplay',
   aliases: [] as string[],
-  version: '1.1.0',
+  version: '1.2.0',
   role: Role.ANYONE,
   author: 'AjiroDesu',
   description: 'Get a random cosplay video from the archive.',
@@ -65,30 +65,41 @@ export const button = {
   [BUTTON_ID.next]: {
     label: '🔁 Next Video',
     style: ButtonStyle.PRIMARY,
-    // Re-invoke onCommand so the refresh replaces the current video via editMessage
-    onClick: async (ctx: AppCtx) => onCommand(ctx),
+    /**
+     * Re-fetches a new video using the shared helper, which handles
+     * in-place editing via the stored button session.
+     */
+    onClick: async (ctx: AppCtx) => sendCosplayVideo(ctx),
   },
 };
 
-// ── Command Handler ───────────────────────────────────────────────────────────
+// ── Core Logic ────────────────────────────────────────────────────────────────
 
-export const onCommand = async (ctx: AppCtx): Promise<void> => {
+/**
+ * Shared send/edit logic used by both onCommand (fresh send) and the
+ * button onClick (in-place edit). Determines the correct code path by
+ * checking `event.type`.
+ */
+async function sendCosplayVideo(ctx: AppCtx): Promise<void> {
   const { chat, native, event, button: btn } = ctx;
-
   const isButtonAction = event['type'] === 'button_action';
 
   try {
     const videoUrl = await fetchCosplayVideo();
     if (!videoUrl) throw new Error('No videos found in archive.');
 
-    // Reuse active button session ID on refresh; generate a new one on fresh command
+    // On a fresh command, generate a new button ID and store a context token
+    // so the session is valid for all subsequent refreshes.
     const buttonId = isButtonAction
       ? ctx.session.id
-      : btn.generateID({ id: BUTTON_ID.next, public: true });
+      : (() => {
+          const id = btn.generateID({ id: BUTTON_ID.next, public: true });
+          btn.createContext({ id, context: {} });
+          return id;
+        })();
 
     const payload = {
       style: MessageStyle.MARKDOWN,
-      message: '👗 **Random Cosplay**',
       attachment_url: [{ name: 'cosplay.mp4', url: videoUrl }],
       ...(hasNativeButtons(native.platform) ? { button: [buttonId] } : {}),
     };
@@ -117,4 +128,10 @@ export const onCommand = async (ctx: AppCtx): Promise<void> => {
       await chat.replyMessage(errPayload);
     }
   }
+}
+
+// ── Command Handler ───────────────────────────────────────────────────────────
+
+export const onCommand = async (ctx: AppCtx): Promise<void> => {
+  await sendCosplayVideo(ctx);
 };
