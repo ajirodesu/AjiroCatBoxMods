@@ -1,9 +1,14 @@
 /**
  * /cosplay — Random Cosplay Video
  *
- * Fetches a random cosplay .mp4 from the ajirodesu/cosplay GitHub archive.
- * Implements a "Next Video" button that replaces the current video in-place
- * by re-invoking the shared sendCosplayVideo helper with the stored session.
+ * Fetches a random cosplay video from the GitHub archive (ajirodesu/cosplay).
+ * Includes a "Next Video" button that re-fetches a new random video in-place.
+ *
+ * How it works:
+ *   1. onCommand calls chat.reply() with the generated button ID.
+ *   2. The button system prefixes the ID and registers the handler.
+ *   3. When clicked, the platform emits 'button_action' → button["next"].onClick(ctx) is called.
+ *   4. onClick re-fetches and edits the message (with the button re-attached so it can be used again).
  */
 
 import axios from 'axios';
@@ -11,33 +16,28 @@ import type { AppCtx } from '@/engine/types/controller.types.js';
 import { Role } from '@/engine/constants/role.constants.js';
 import { MessageStyle } from '@/engine/constants/message-style.constants.js';
 import { ButtonStyle } from '@/engine/constants/button-style.constants.js';
-import { hasNativeButtons } from '@/engine/utils/ui-capabilities.util.js';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Fetches a random .mp4 URL from the ajirodesu/cosplay GitHub repository.
- * Scrapes the GitHub tree page and returns a raw.githubusercontent.com URL.
- */
+/** Fetches a random cosplay video URL by scraping the GitHub repo file list. */
 async function fetchCosplayVideo(): Promise<string | null> {
   try {
     const repoUrl = 'https://github.com/ajirodesu/cosplay/tree/main/';
-    const { data: html } = await axios.get<string>(repoUrl, { timeout: 8000 });
+    const { data: html } = await axios.get(repoUrl, { timeout: 8000 });
 
+    // Regex to find .mp4 files in GitHub file list
     const re = /href="\/ajirodesu\/cosplay\/blob\/main\/([^"]+\.mp4)"/g;
     const files: string[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(html)) !== null) {
-      if (m[1]) files.push(m[1]);
+    let match: RegExpExecArray | null;
+
+    while ((match = re.exec(html)) !== null) {
+      if (match[1]) files.push(match[1]);
     }
 
     if (!files.length) return null;
-
     const file = files[Math.floor(Math.random() * files.length)];
     return `https://raw.githubusercontent.com/ajirodesu/cosplay/main/${file}`;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('[Cosplay] Fetch error:', message);
+  } catch {
     return null;
   }
 }
@@ -47,7 +47,7 @@ async function fetchCosplayVideo(): Promise<string | null> {
 export const config = {
   name: 'cosplay',
   aliases: [] as string[],
-  version: '1.2.0',
+  version: '1.1.0',
   role: Role.ANYONE,
   author: 'AjiroDesu',
   description: 'Get a random cosplay video from the archive.',
@@ -57,81 +57,75 @@ export const config = {
   hasPrefix: true,
 };
 
-// ── Button Registry ───────────────────────────────────────────────────────────
+// BUTTON_IDs are the local keys used in the button object.
+// The engine automatically prefixes them with the command name at dispatch time.
+const BUTTON_ID = {
+  next: 'next',
+};
 
-const BUTTON_ID = { next: 'next' } as const;
-
+/**
+ * Button definitions exported as `button`.
+ * Keys match BUTTON_ID values. `onClick` receives the same ctx shape as `onCommand`.
+ */
 export const button = {
   [BUTTON_ID.next]: {
     label: '🔁 Next Video',
     style: ButtonStyle.PRIMARY,
-    /**
-     * Re-fetches a new video using the shared helper, which handles
-     * in-place editing via the stored button session.
-     */
-    onClick: async (ctx: AppCtx) => sendCosplayVideo(ctx),
+    onClick: async ({ chat, event, button }: AppCtx) => {
+      try {
+        const videoUrl = await fetchCosplayVideo();
+        if (!videoUrl) throw new Error('No videos found.');
+
+        // Derive file extension from URL for a clean attachment name
+        const extMatch = videoUrl.match(/\.(jpe?g|png|gif|webp|mp4)(\?|$)/i);
+        const ext = extMatch?.[1] ?? 'mp4';
+
+        await chat.editMessage({
+          style: MessageStyle.MARKDOWN,
+          message_id_to_edit: event['messageID'] as string,
+          message: '👗 **Random Cosplay**',
+          attachment_url: [{ name: `cosplay.${ext}`, url: videoUrl }],
+          button: [
+            button.generateID({ id: BUTTON_ID.next, public: true }),
+          ],
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        await chat.editMessage({
+          style: MessageStyle.MARKDOWN,
+          message_id_to_edit: event['messageID'] as string,
+          message: `⚠️ **Error:** ${message}`,
+        });
+      }
+    },
   },
 };
 
-// ── Core Logic ────────────────────────────────────────────────────────────────
-
 /**
- * Shared send/edit logic used by both onCommand (fresh send) and the
- * button onClick (in-place edit). Determines the correct code path by
- * checking `event.type`.
+ * Entry point: fetches the first video and sends it with the interactive button.
  */
-async function sendCosplayVideo(ctx: AppCtx): Promise<void> {
-  const { chat, native, event, button: btn } = ctx;
-  const isButtonAction = event['type'] === 'button_action';
-
+export const onCommand = async ({ chat, button }: AppCtx) => {
   try {
     const videoUrl = await fetchCosplayVideo();
-    if (!videoUrl) throw new Error('No videos found in archive.');
+    if (!videoUrl) throw new Error('No videos found.');
 
-    // On a fresh command, generate a new button ID and store a context token
-    // so the session is valid for all subsequent refreshes.
-    const buttonId = isButtonAction
-      ? ctx.session.id
-      : (() => {
-          const id = btn.generateID({ id: BUTTON_ID.next, public: true });
-          btn.createContext({ id, context: {} });
-          return id;
-        })();
+    // Derive file extension from URL for a clean attachment name
+    const extMatch = videoUrl.match(/\.(jpe?g|png|gif|webp|mp4)(\?|$)/i);
+    const ext = extMatch?.[1] ?? 'mp4';
 
-    const payload = {
+    await chat.reply({
       style: MessageStyle.MARKDOWN,
-      attachment_url: [{ name: 'cosplay.mp4', url: videoUrl }],
-      ...(hasNativeButtons(native.platform) ? { button: [buttonId] } : {}),
-    };
-
-    if (isButtonAction) {
-      await chat.editMessage({
-        ...payload,
-        message_id_to_edit: event['messageID'] as string,
-      });
-    } else {
-      await chat.replyMessage(payload);
-    }
+      message: '👗 **Random Cosplay**',
+      attachment_url: [{ name: `cosplay.${ext}`, url: videoUrl }],
+      button: [
+        button.generateID({ id: BUTTON_ID.next, public: true }),
+      ],
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    const errPayload = {
+    await chat.reply({
       style: MessageStyle.MARKDOWN,
       message: `⚠️ **Error:** ${message}`,
-    };
-
-    if (isButtonAction) {
-      await chat.editMessage({
-        ...errPayload,
-        message_id_to_edit: event['messageID'] as string,
-      });
-    } else {
-      await chat.replyMessage(errPayload);
-    }
+    });
   }
-}
-
-// ── Command Handler ───────────────────────────────────────────────────────────
-
-export const onCommand = async (ctx: AppCtx): Promise<void> => {
-  await sendCosplayVideo(ctx);
 };
