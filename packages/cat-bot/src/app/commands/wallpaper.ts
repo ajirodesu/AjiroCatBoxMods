@@ -1,7 +1,7 @@
 /**
  * Wallpaper Command
  * Fetches high-quality wallpapers based on keywords or random generation.
- * Includes interactive topic buttons with row wrapping.
+ * Includes interactive topic buttons (flat array – matches the new button system).
  */
 
 import axios from 'axios';
@@ -14,7 +14,6 @@ import { hasNativeButtons } from '@/engine/utils/ui-capabilities.util.js';
 const TIMEOUT = 20000;
 const DEFAULT_WIDTH = 1920;
 const DEFAULT_HEIGHT = 1080;
-const BUTTONS_PER_ROW = 3;
 
 function parseArgs(args: string[]): { query: string; width: number; height: number } {
   let width = DEFAULT_WIDTH;
@@ -32,14 +31,6 @@ function parseArgs(args: string[]): { query: string; width: number; height: numb
 
   const query = parts.join(' ').trim();
   return { query, width, height };
-}
-
-function chunkArray<T>(items: T[], size: number): T[][] {
-  const rows: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    rows.push(items.slice(i, i + size));
-  }
-  return rows;
 }
 
 const BUTTON_ID = {
@@ -63,7 +54,7 @@ const PRESETS = {
 export const config = {
   name: 'wallpaper',
   aliases: ['wp', 'wall', 'background'] as string[],
-  version: '1.3.0',
+  version: '1.4.0',
   role: Role.ANYONE,
   author: 'AjiroDesu',
   description: 'Get a random wallpaper (optionally specify size/topic).',
@@ -73,23 +64,25 @@ export const config = {
   hasPrefix: true,
 };
 
-function buildWallpaperButtons(button: AppCtx['button']) {
-  const ids = [
-    button.generateID({ id: BUTTON_ID.random, public: true }),
-    button.generateID({ id: BUTTON_ID.nature, public: true }),
-    button.generateID({ id: BUTTON_ID.space, public: true }),
-    button.generateID({ id: BUTTON_ID.city, public: true }),
-    button.generateID({ id: BUTTON_ID.sunset, public: true }),
-    button.generateID({ id: BUTTON_ID.anime, public: true }),
-  ];
-
-  return chunkArray(ids, BUTTONS_PER_ROW);
-}
-
+/**
+ * Shared render logic used by both onCommand (fresh send) and button onClick (in-place edit).
+ * Follows the exact pattern from waifu.ts:
+ *   - Checks `event.type === 'button_action'` to decide reply vs edit.
+ *   - Always attaches the full set of topic buttons (flat array, new system style).
+ */
 async function renderWallpaper(ctx: AppCtx, query: string, width: number, height: number): Promise<void> {
-  const { chat, event, native, button } = ctx;
+  const { chat, event, native, button: btn } = ctx;
   const isButtonAction = event['type'] === 'button_action';
-  const buttons = buildWallpaperButtons(button);
+
+  // New system: flat array of generated IDs (no more chunkArray / 2D rows)
+  const buttonIds = [
+    btn.generateID({ id: BUTTON_ID.random, public: true }),
+    btn.generateID({ id: BUTTON_ID.nature, public: true }),
+    btn.generateID({ id: BUTTON_ID.space, public: true }),
+    btn.generateID({ id: BUTTON_ID.city, public: true }),
+    btn.generateID({ id: BUTTON_ID.sunset, public: true }),
+    btn.generateID({ id: BUTTON_ID.anime, public: true }),
+  ];
 
   const loadingMessage = {
     style: MessageStyle.MARKDOWN,
@@ -130,7 +123,7 @@ async function renderWallpaper(ctx: AppCtx, query: string, width: number, height
       style: MessageStyle.MARKDOWN,
       message: caption,
       attachment: [{ name: `wallpaper_${width}x${height}.jpg`, stream: Buffer.from(data) }],
-      ...(hasNativeButtons(native.platform) ? { button: buttons as any } : {}),
+      ...(hasNativeButtons(native.platform) ? { button: buttonIds } : {}),
     };
 
     if (isButtonAction) {
@@ -159,7 +152,7 @@ async function renderWallpaper(ctx: AppCtx, query: string, width: number, height
         style: MessageStyle.MARKDOWN,
         message_id_to_edit: event['messageID'] as string,
         message: errorMsg,
-        ...(hasNativeButtons(native.platform) ? { button: buttons as any } : {}),
+        ...(hasNativeButtons(native.platform) ? { button: buttonIds } : {}),
       });
       return;
     }
