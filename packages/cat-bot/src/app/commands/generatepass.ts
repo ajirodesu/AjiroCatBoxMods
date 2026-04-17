@@ -14,7 +14,7 @@ export const config = {
   role: Role.ANYONE,
   author: 'AjiroDesu',
   description: 'Generate strong passwords.',
-  category: 'Utility',
+  category: 'tools',
   usage: '[base_word]',
   cooldown: 3,
   hasPrefix: true,

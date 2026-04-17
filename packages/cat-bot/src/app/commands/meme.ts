@@ -34,7 +34,7 @@ export const config = {
   role: Role.ANYONE,
   author: 'ShawnDesu',
   description: 'Sends a random meme.',
-  category: 'Fun',
+  category: 'Random',
   usage: '',
   cooldown: 5,
   hasPrefix: true,

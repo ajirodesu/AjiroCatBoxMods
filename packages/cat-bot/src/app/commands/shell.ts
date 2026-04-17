@@ -18,7 +18,7 @@ export const config = {
   role: Role.BOT_ADMIN,
   author: 'AjiroDesu',
   description: 'Execute shell/terminal commands.',
-  category: 'Developer',
+  category: 'Bot Admin',
   usage: '<command>',
   cooldown: 3,
   hasPrefix: true,

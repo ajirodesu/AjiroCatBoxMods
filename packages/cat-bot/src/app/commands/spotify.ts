@@ -14,7 +14,7 @@ export const config = {
   role: Role.ANYONE,
   author: 'AjiroDesu',
   description: 'Search for a song and get its details and preview.',
-  category: 'Music',
+  category: 'Media',
   usage: '<song title>',
   cooldown: 5,
   hasPrefix: true,

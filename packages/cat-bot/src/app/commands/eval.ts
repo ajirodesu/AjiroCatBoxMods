@@ -17,7 +17,7 @@ export const config = {
   role: Role.BOT_ADMIN,
   author: 'AjiroDesu',
   description: 'Evaluate JavaScript code (Developer Only)',
-  category: 'Developer',
+  category: 'Bot Admin',
   usage: '<code to evaluate>',
   cooldown: 0,
   hasPrefix: true,

@@ -58,7 +58,7 @@ export const config = {
   role: Role.ANYONE,
   author: 'AjiroDesu',
   description: 'Get a random wallpaper (optionally specify size/topic).',
-  category: 'Utility',
+  category: 'Random',
   usage: '[query] [WxH]',
   cooldown: 5,
   hasPrefix: true,

@@ -14,7 +14,7 @@ export const config = {
   role: Role.ANYONE,
   author: 'AjiroDesu',
   description: 'Set a reminder. Supports natural language too.',
-  category: 'Utility',
+  category: 'Tools',
   usage: '<5s|10m|2h|1d> <message>',
   cooldown: 3,
   hasPrefix: true,
