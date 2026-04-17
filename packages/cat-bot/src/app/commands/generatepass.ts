@@ -76,7 +76,7 @@ function createPassword(base = '', length = 12): string {
 
 // ── Command ───────────────────────────────────────────────────────────────────
 
-export const onCommand = async ({ args, chat }: AppCtx): Promise<void> => {
+export const onCommand = async ({ args, chat, prefix = '/' }: AppCtx): Promise<void> => {
   const baseWord = args.join(' ').trim();
 
   if (!baseWord) {
@@ -86,7 +86,7 @@ export const onCommand = async ({ args, chat }: AppCtx): Promise<void> => {
         `💡 **Usage Guide**\n\n` +
         `Generates 6 strong passwords based on your input.\n\n` +
         `**Example:**\n` +
-        `/generatepass banana`,
+        `${prefix}generatepass banana`,
     });
     return;
   }

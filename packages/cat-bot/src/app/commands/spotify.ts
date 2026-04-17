@@ -36,11 +36,11 @@ interface ShazamResponse {
   results?: ShazamSong[];
 }
 
-export const onCommand = async ({ args, chat }: AppCtx): Promise<void> => {
+export const onCommand = async ({ args, chat, prefix = '/' }: AppCtx): Promise<void> => {
   if (!args.length) {
     await chat.replyMessage({
       style: MessageStyle.MARKDOWN,
-      message: '❌ Please provide a song title.\nUsage: `/spotify <song title>`',
+      message: `❌ Please provide a song title.\nUsage: \`${prefix}spotify <song title>\``,
     });
     return;
   }

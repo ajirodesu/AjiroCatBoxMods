@@ -24,11 +24,11 @@ export const config = {
   hasPrefix: true,
 };
 
-export const onCommand = async ({ args, chat }: AppCtx): Promise<void> => {
+export const onCommand = async ({ args, chat, prefix = '/' }: AppCtx): Promise<void> => {
   if (!args.length) {
     await chat.replyMessage({
       style: MessageStyle.MARKDOWN,
-      message: '❌ Please provide a command to execute.\nUsage: `/shell <command>`',
+      message: `❌ Please provide a command to execute.\nUsage: \`${prefix}shell <command>\``,
     });
     return;
   }

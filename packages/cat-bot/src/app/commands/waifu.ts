@@ -143,7 +143,7 @@ async function sendWaifuImage(ctx: AppCtx, category: string): Promise<void> {
 // ── Command Handler ───────────────────────────────────────────────────────────
 
 export const onCommand = async (ctx: AppCtx): Promise<void> => {
-  const { args, chat } = ctx;
+  const { args, chat, prefix = '/' } = ctx;
   const arg = (args[0] ?? 'waifu').toLowerCase();
 
   // 1. Show category list
@@ -160,7 +160,7 @@ export const onCommand = async (ctx: AppCtx): Promise<void> => {
   if (!(CATEGORIES as readonly string[]).includes(arg)) {
     await chat.replyMessage({
       style: MessageStyle.MARKDOWN,
-      message: `⚠️ **Invalid Category**\nCategory \`${arg}\` does not exist.\nUse \`/waifu list\` to see all options.`,
+      message: `⚠️ **Invalid Category**\nCategory \`${arg}\` does not exist.\nUse \`${prefix}waifu list\` to see all options.`,
     });
     return;
   }

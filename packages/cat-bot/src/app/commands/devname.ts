@@ -92,12 +92,12 @@ const generators: Record<string, (name: string, count: number) => string[]> = {
 
 // ── Command ───────────────────────────────────────────────────────────────────
 
-export const onCommand = async ({ args, chat }: AppCtx): Promise<void> => {
+export const onCommand = async ({ args, chat, prefix = '/' }: AppCtx): Promise<void> => {
   if (!args.length) {
     await chat.replyMessage({
       style: MessageStyle.MARKDOWN,
       message:
-        '❌ Please provide a name.\nUsage: `/devname <n> [style]`\n' +
+        '❌ Please provide a name.\nUsage: \`${prefix}devname <n> [style]\`\n' +
         `Available styles: ${Object.keys(generators).join(', ')}`,
     });
     return;
