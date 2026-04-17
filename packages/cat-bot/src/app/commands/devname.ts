@@ -97,7 +97,7 @@ export const onCommand = async ({ args, chat, prefix = '/' }: AppCtx): Promise<v
     await chat.replyMessage({
       style: MessageStyle.MARKDOWN,
       message:
-        '❌ Please provide a name.\nUsage: \`${prefix}devname <n> [style]\`\n' +
+        `❌ Please provide a name.\nUsage: \`${prefix}devname <n> [style]\`\n` +
         `Available styles: ${Object.keys(generators).join(', ')}`,
     });
     return;
