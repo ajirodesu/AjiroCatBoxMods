@@ -13,7 +13,7 @@ export const config = {
   version: '1.1.0',
   role: Role.ANYONE,
   author: 'AjiroDesu',
-  description: 'Generate strong passwords.',
+  description: 'Generates 6 strong passwords based on your input.',
   category: 'tools',
   usage: '[base_word]',
   cooldown: 3,
@@ -76,18 +76,11 @@ function createPassword(base = '', length = 12): string {
 
 // ── Command ───────────────────────────────────────────────────────────────────
 
-export const onCommand = async ({ args, chat, prefix = '/' }: AppCtx): Promise<void> => {
+export const onCommand = async ({ args, chat, usage, prefix = '/' }: AppCtx): Promise<void> => {
   const baseWord = args.join(' ').trim();
 
   if (!baseWord) {
-    await chat.replyMessage({
-      style: MessageStyle.MARKDOWN,
-      message:
-        `💡 **Usage Guide**\n\n` +
-        `Generates 6 strong passwords based on your input.\n\n` +
-        `**Example:**\n` +
-        `${prefix}generatepass banana`,
-    });
+    usage();
     return;
   }
 

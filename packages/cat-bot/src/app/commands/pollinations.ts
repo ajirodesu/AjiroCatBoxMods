@@ -21,12 +21,9 @@ export const config = {
   hasPrefix: true,
 };
 
-export const onCommand = async ({ args, prefix, chat }: AppCtx): Promise<void> => {
+export const onCommand = async ({ args, prefix, usage, chat }: AppCtx): Promise<void> => {
   if (!args.length) {
-    await chat.replyMessage({
-      style: MessageStyle.MARKDOWN,
-      message: `❌ Please provide a prompt.\nUsage: \`${prefix}${config.name} ${config.usage}\``,
-    });
+    await usage();
     return;
   }
 
