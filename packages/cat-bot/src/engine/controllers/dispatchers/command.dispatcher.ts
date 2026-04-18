@@ -24,47 +24,9 @@ import {
 import type { OnCommandCtx } from '@/engine/types/middleware.types.js';
 // Platform filter — enforces config.platform[] declared by each command module
 import { isPlatformAllowed } from '@/engine/modules/platform/platform-filter.util.js';
-
-// ── Usage guide factory ───────────────────────────────────────────────────────
-
-/**
- * Creates a bound `usage()` function for a command module.
- *
- * Reads the command's config (name, guide/usage, description) and sends a
- * formatted usage guide via the provided chat context.
- *
- * `config.guide` takes precedence over `config.usage` so existing commands
- * that declare `usage: '[arg]'` continue to work without changes, while new
- * commands can declare `guide: ['[arg1]', '[arg2]']` for multi-line guides.
- *
- * @param command  - The loaded command module (exports object).
- * @param chat     - The command-scoped chat context (from createChatContext).
- * @param prefix   - The active prefix string for this session.
- * @returns        An async function that sends the usage guide as a reply.
- */
-function createUsage(
-  command: Record<string, unknown>,
-  chat: ReturnType<typeof createChatContext>,
-  prefix: string,
-): () => Promise<void> {
-  return async function usage(): Promise<void> {
-    const cfg = (command['config'] as Record<string, unknown>) ?? {};
-    // Support both `guide` (new, array-friendly) and legacy `usage` (string)
-    const rawGuide = cfg['guide'] ?? cfg['usage'];
-    const guides: string[] = Array.isArray(rawGuide)
-      ? (rawGuide as string[])
-      : [typeof rawGuide === 'string' ? rawGuide : ''];
-
-    let text = '▫️ **Usage Guide:**\n\n';
-    for (const g of guides)
-      text += g
-        ? `\`${prefix}${cfg['name']} ${g}\`\n`
-        : `\`${prefix}${cfg['name']}\`\n`;
-    text += `\n📄 ${(cfg['description'] as string) || 'No description provided.'}`;
-
-    await chat.replyMessage({ message: text });
-  };
-}
+// Shared usage guide factory — injected into AppCtx so onCommand handlers can
+// call ctx.usage() to display a formatted guide when arguments are invalid/missing.
+import { createUsage } from '@/engine/utils/usage.util.js';
 
 /**
  * Dispatches a parsed command to its registered module.
